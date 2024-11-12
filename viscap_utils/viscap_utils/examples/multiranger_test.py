@@ -10,12 +10,13 @@ class MultirangerTest(Node):
         super().__init__("test_multiranger_node")
 
         self.crazyflie = ViscapCrazyflie(self)
-        self.multiranger = self.crazyflie.init_crazyflie([ViscapCrazyflie.MULTIRANGER])
+        self.crazyflie.init_crazyflie()
 
         self.get_logger().info("Test Multiranger Node has been initialized")
 
     def teste_gate(self) -> None:
 
+        self.multiranger = self.crazyflie.create_multiranger()
         self.crazyflie.motion.up(1.3)
         self.crazyflie.motion.forward(1.0)
         sleep(0.5)
@@ -28,7 +29,9 @@ class MultirangerTest(Node):
         self.crazyflie.motion.land()
         
 
-    def run_test(self) -> None:
+    def navigate_test(self) -> None:
+
+        self.crazyflie.create_multiranger()
         self.crazyflie.multiranger_navigate()
 
 def main(args = None):
@@ -37,7 +40,7 @@ def main(args = None):
 
     try:
         test = MultirangerTest()
-        test.run_test()
+        test.navigate_test()
         # test.teste_gate()
         rclpy.spin(test)
 

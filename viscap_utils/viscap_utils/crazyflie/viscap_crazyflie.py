@@ -56,12 +56,26 @@ class ViscapCrazyflie:
 
             else: raise ValueError("Invalid tool name")
 
-        return self.__initialized_tools[0]
+
+    def create_multiranger(self) -> Multiranger:
+
+        """
+        Create, start and return the multiranger object
+        """
+
+        self.multiranger = Multiranger(self.sync_crazyflie)
+        self.multiranger.start()
+        self.__initialized_tools.append(self.multiranger)
+
+        return self.multiranger
 
     def multiranger_navigate(self) -> None:
+
         """
-        Monitore the 5 sensors in the multiranger deck and avoid colision
+        Monitore the 5 sensors in the multiranger deck and avoid colision. You must initialize 
+        Multiranger with create_multiranger function
         """
+
         self.node.get_logger().info("Multiranger monitor timer initialized")
         self.multiranger_timer = self.node.create_timer(0.1, self.__multiranger_monitor)
         self.__vel = 0.5
