@@ -1,4 +1,5 @@
 from rclpy.node import Node
+from pathlib import Path
 import cflib.crtp as crtp
 from cflib.crazyflie import Crazyflie
 from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
@@ -12,6 +13,7 @@ class ViscapCrazyflie:
 
     URI = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E7E7')
     MULTIRANGER = "multiranger"
+    PATH = Path(__file__).resolve().parent
 
     def __init__(self, node: Node) -> None:
 
@@ -22,19 +24,10 @@ class ViscapCrazyflie:
         """
 
         self.node = node
-
-        self.crazyflie = Crazyflie(rw_cache="./cache")
-        self.sync_crazyflie = SyncCrazyflie(link_uri = ViscapCrazyflie.URI, cf = self.crazyflie)
-
-        self.motion = MotionCommander(self.sync_crazyflie, 0.5)
-        # self.position_hl = PositionHlCommander(self.sync_crazyflie)
-
-        self.cleaned = False
-
         self.tools = {ViscapCrazyflie.MULTIRANGER: lambda : Multiranger(self.sync_crazyflie)}
         self.__initialized_tools = list()
 
-    def init_crazyflie(self, tools: list, height: float = 0.5) -> None:
+    def init_crazyflie(self, tools: list = list(), height: float = 0.5) -> None:
 
         """
         Initialize the drivers, crazyflie's communication settings and make it take off
@@ -42,6 +35,12 @@ class ViscapCrazyflie:
         :param tools (list): list with the tools to initialize 
         :param height (float): the height in meters for drone takeoff 
         """
+
+        self.crazyflie = Crazyflie(rw_cache = f"{ViscapCrazyflie.PATH}/cache")
+        self.sync_crazyflie = SyncCrazyflie(link_uri = self.URI, cf = self.crazyflie)
+
+        self.motion = MotionCommander(self.sync_crazyflie, 0.5)
+        # self.position_hl = PositionHlCommander(self.sync_crazyflie)
 
         crtp.init_drivers()
         self.sync_crazyflie.open_link()
@@ -55,6 +54,8 @@ class ViscapCrazyflie:
                 self.__initialized_tools.append(tool_)
 
             else: raise ValueError("Invalid tool name")
+
+        self.cleaned = False
 
 
     def create_multiranger(self) -> Multiranger:
@@ -92,6 +93,7 @@ class ViscapCrazyflie:
             self.motion.land()
             self.node.destroy_timer(self.multiranger_timer)
 
+        self.node.get_logger().info(f"Movendo com vel x: {velocity_x} e vel y: {velocity_y}")
         self.motion.start_linear_motion(velocity_x, velocity_y, 0)
 
     def __is_close(self, range: float) -> bool:
@@ -99,6 +101,11 @@ class ViscapCrazyflie:
         else: return range < 0.2
 
     def cleanup(self) -> None:
+
+        """
+        Close all the links that were opened, finish the tools applications
+        and land the drone
+        """
 
         if not self.cleaned: 
             self.motion.land()

@@ -47,8 +47,8 @@ def main(args = None):
     except KeyboardInterrupt as ki:
         print(ki)
 
-    except Exception:
-        pass
+    except Exception as ex:
+        print("Exceção: {}" .format(ex))
 
     finally:
         test.crazyflie.cleanup()
