@@ -6,7 +6,7 @@ from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
 from cflib.utils import uri_helper
 from cflib.utils.multiranger import Multiranger
 from cflib.positioning.motion_commander import MotionCommander
-from cflib.positioning.position_hl_commander import PositionHlCommander
+from cflib.crazyflie.swarm import Swarm, CachedCfFactory
 
 
 class ViscapCrazyflie:
@@ -20,6 +20,7 @@ class ViscapCrazyflie:
         """
         Initialize the crazyflie's class objects for Crazyflie, SyncCrazyflie, MotionCommander and 
         Multiranger
+
         :param node (rclpy.node.Node): the ROS2 node to handle the crazyflie actions
         """
 
@@ -27,24 +28,31 @@ class ViscapCrazyflie:
         self.tools = {ViscapCrazyflie.MULTIRANGER: lambda : Multiranger(self.sync_crazyflie)}
         self.__initialized_tools = list()
 
-    def init_crazyflie(self, tools: list = list(), height: float = 0.5) -> None:
+    def init_crazyflie(self, tools: list = list(), single_crazyflie: bool = True) -> MotionCommander | None:
 
         """
-        Initialize the drivers, crazyflie's communication settings and make it take off
+        Initialize the drivers, crazyflie's communication settings and and return motion 
+        commander instance if set the single_crazyflie parameter. None for otherwise
 
         :param tools (list): list with the tools to initialize 
-        :param height (float): the height in meters for drone takeoff 
+        :param single_crazyflie (bool): True for a single crazyflie application, False for Swarm
+
         """
 
-        self.crazyflie = Crazyflie(rw_cache = f"{ViscapCrazyflie.PATH}/cache")
-        self.sync_crazyflie = SyncCrazyflie(link_uri = self.URI, cf = self.crazyflie)
-
-        self.motion = MotionCommander(self.sync_crazyflie, 0.5)
-        # self.position_hl = PositionHlCommander(self.sync_crazyflie)
-
         crtp.init_drivers()
-        self.sync_crazyflie.open_link()
-        self.motion.take_off(height=height)
+
+        if single_crazyflie:
+            self.crazyflie = Crazyflie(rw_cache = f"{ViscapCrazyflie.PATH}/.cache")
+            self.sync_crazyflie = SyncCrazyflie(link_uri = self.URI, cf = self.crazyflie)
+
+            self.motion = MotionCommander(self.sync_crazyflie, 0.5)
+
+            self.__initialized_tools.append(self.sync_crazyflie)
+            self.__initialized_tools.append(self.motion)
+
+            self.sync_crazyflie.open_link()
+
+            return self.motion
 
         for tool in tools:
             action = self.tools.get(tool, None)
@@ -58,6 +66,24 @@ class ViscapCrazyflie:
         self.cleaned = False
 
 
+    def init_crazyflie_swarm(self, uris: set[str], func: callable) -> None:
+
+        """
+        Initialize crazyflie for a Swarm application
+        
+        :param uris (set[str]): A set of uris to use when connecting to the Crazyflies in the swarm
+        :param func (callable): Function to execute for all Crazyflies in the swarm.
+        """
+        
+        self.init_crazyflie(single_crazyflie = False)
+        self.swarm = Swarm(uris = uris, factory = CachedCfFactory(rw_cache = ".cache"))
+        self.__initialized_tools.append(self.swarm)
+
+        self.swarm.open_links()
+        self.swarm.reset_estimators()
+        self.swarm.parallel_safe(func)
+
+        
     def create_multiranger(self) -> Multiranger:
 
         """
@@ -92,6 +118,7 @@ class ViscapCrazyflie:
         if self.__is_close(self.multiranger.up)   : 
             self.motion.land()
             self.node.destroy_timer(self.multiranger_timer)
+            return
 
         self.node.get_logger().info(f"Movendo com vel x: {velocity_x} e vel y: {velocity_y}")
         self.motion.start_linear_motion(velocity_x, velocity_y, 0)
@@ -108,9 +135,7 @@ class ViscapCrazyflie:
         """
 
         if not self.cleaned: 
-            self.motion.land()
             [tool.__exit__(None, None, None) for tool in self.__initialized_tools]
-            self.sync_crazyflie.close_link()
             self.cleaned = True
         else: print("Already closed")
 
