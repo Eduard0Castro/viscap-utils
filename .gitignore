@@ -2,3 +2,7 @@
 __pycache__
 .cache
 *.jpg
+*.jpeg
+*.png
+*.mp4
+*.pt
