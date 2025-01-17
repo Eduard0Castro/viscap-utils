@@ -1,7 +1,9 @@
-from ultralytics import YOLO
 import cv2
+from ultralytics import YOLO
 from pathlib import Path
 from glob import glob
+from numpy import full
+from numpy.random import randint
 
 
 class ObjectDetect:
@@ -33,6 +35,8 @@ class ObjectDetect:
         self.path = Path(__file__).resolve().parent
         self.model = YOLO(f"{self.path}/models/{model_name}", task="detect")
         self.conf_threshold = conf_threshold
+        self.colors = randint(0, 255, size = (len(self.model.names), 3), dtype = "uint8")
+        self.text_size = 0.5
 
 
     def detect_from_image(self) -> None:
@@ -46,12 +50,14 @@ class ObjectDetect:
 
         images_path = "media/images"
         images = glob(f"{self.path}/{images_path}/input/*")
+        cont = 0
     
-        for index, image in enumerate(images):
+        for image in images:
             if not image.endswith(".txt"):
                 img = cv2.imread(image)
                 output = self.detection(img)
-                cv2.imwrite(f"{self.path}/{images_path}/output/output{index+1}.jpg", output)
+                cont += 1
+                cv2.imwrite(f"{self.path}/{images_path}/output/output{cont}.jpg", output)
 
 
     def detect_from_video(self, video_name: str, 
@@ -120,10 +126,17 @@ class ObjectDetect:
                         object_label = self.model.names[class_id]
                         label = f"{object_label} ({confidence:.2f})"
                         x1, y1, x2, y2 = map(int, box[:4])
+                        color = [int(c) for c in self.colors[class_id]]
+                        background = full((img.shape), (0,0,0), dtype = "uint8")
+                        cv2.putText(background, label, (x1, y1 - 5), 
+                                    cv2.FONT_HERSHEY_SIMPLEX, self.text_size, (255,255,255), 1)
+                        bgx, bgy, bgw, bgh = cv2.boundingRect(background[:,:,2])
+
+                        cv2.rectangle(img, (bgx - 2, bgy), (bgx + bgw, bgy + bgh), color, -1) 
+                        cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
+                        cv2.putText(img, label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 
+                                    self.text_size, (255, 255, 255), 1)
                         
-                        cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                        cv2.putText(img, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 
-                                    0.5, (0, 255, 0), 2)
             return img
 
 
