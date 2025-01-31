@@ -18,50 +18,55 @@ class ObjectDetect:
 
     """
 
-    def __init__(self, model_name: str, conf_threshold: float) -> None:
+    def __init__(self, model_path: str, conf_threshold: float) -> None:
 
         """
 
         ObjectDetect constructor: class contructor to initialize path, model and
         confidence threshold.
 
-        :param model_name (str): Name of the trained model file located in the 'models' 
-         folder, which will be used for object detection.
+        :param model_path (str): Path of the trained model file which will be used 
+         for object detection. 
         :param conf_threshold (float): Confidence threshold for filtering detected 
          objects. Detections with a confidence score below this value will be discarded.
         
         """
         
-        self.path = Path(__file__).resolve().parent
-        self.model = YOLO(f"{self.path}/models/{model_name}", task="detect")
+        self.model_path = model_path
+        self.model = YOLO(self.model_path, task = "detect")
         self.conf_threshold = conf_threshold
         self.colors = randint(0, 255, size = (len(self.model.names), 3), dtype = "uint8")
         self.text_size = 0.5
 
 
-    def detect_from_image(self) -> None:
+    def detect_from_image(self, 
+                          images_path_in: str, 
+                          images_path_out: str) -> None:
 
         """
 
         Function to apply the trained model to the images from input folder 
         and save the results in the output folder.
+        :param images_path_in (str): the folder path that the images are stored 
+        :param images_path_out (str): the path that will be stored the result images
 
         """
 
-        images_path = "media/images"
-        images = glob(f"{self.path}/{images_path}/input/*")
+        images = glob(f"{images_path_in}/*")
+        images.sort()
         cont = 0
-    
+
         for image in images:
             if not image.endswith(".txt"):
                 img = cv2.imread(image)
                 output = self.detection(img)
                 cont += 1
-                cv2.imwrite(f"{self.path}/{images_path}/output/output{cont}.jpg", output)
+                cv2.imwrite(f"{images_path_out}/output_{cont}.jpg", output)
 
 
-    def detect_from_video(self, video_name: str, 
-                          output_name: str, 
+    def detect_from_video(self, 
+                          video_path: str,
+                          output_video_path: str, 
                           frame_rate: float,
                           video_dimension: tuple[int, int]) -> None:
 
@@ -70,20 +75,19 @@ class ObjectDetect:
         Function to apply the trained model to the input video and save
         the result. Both of videos must be in the videos folder
 
-        :param video_name (str): the name of the video that will be sent to the model
-        :param output_name (str): name of the output video with the detection
+        :param video_path (str): the path of the video that will be sent to the model
+        :param output_video_path (str): path of the output video with the detection
         :param frame_rate (float): frames per second for output video
         :param video_dimension (tuple[int, int]): tuple with width and height for output video
 
         """
-
-        video_path = "media/videos"
-        cap = cv2.VideoCapture(f"{self.path}/{video_path}/{video_name}")
-
+        
+        cap = cv2.VideoCapture(video_path)
         fcode = cv2.VideoWriter.fourcc(*"mp4v")
-        video_file_name = self.path/f"{video_path}/{output_name}"
-
-        recordedVideo = cv2.VideoWriter(video_file_name, fcode, frame_rate, video_dimension)
+        recordedVideo = cv2.VideoWriter(output_video_path, 
+                                        fcode, 
+                                        frame_rate, 
+                                        video_dimension)
 
         while cv2.waitKey(1):
 
@@ -132,7 +136,7 @@ class ObjectDetect:
                                     cv2.FONT_HERSHEY_SIMPLEX, self.text_size, (255,255,255), 1)
                         bgx, bgy, bgw, bgh = cv2.boundingRect(background[:,:,2])
 
-                        cv2.rectangle(img, (bgx - 2, bgy), (bgx + bgw, bgy + bgh), color, -1) 
+                        cv2.rectangle(img, (bgx - 3, bgy), (bgx + bgw, bgy + bgh), color, -1) 
                         cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
                         cv2.putText(img, label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 
                                     self.text_size, (255, 255, 255), 1)
@@ -142,9 +146,12 @@ class ObjectDetect:
 
 if __name__ == "__main__":
 
-    object_detect = ObjectDetect("drones_model.pt", 0.4)
-    object_detect.detect_from_image()
-    object_detect.detect_from_video(video_name = "drones.mp4", 
-                                    output_name = "drones_resultado.mp4", 
+    path = Path(__file__).parent
+    object_detect = ObjectDetect(f"{path}/models/drones_model.pt", 0.3)
+
+    object_detect.detect_from_image(images_path_in = f"{path}/media/images/input",
+                                    images_path_out = f"{path}/media/images/output")
+    object_detect.detect_from_video(video_path = f"{path}/media/videos/drones.mp4",
+                                    output_video_path = f"{path}/media/videos/drones_resultado.mp4", 
                                     frame_rate = 25.0, 
                                     video_dimension = (1280, 720))
