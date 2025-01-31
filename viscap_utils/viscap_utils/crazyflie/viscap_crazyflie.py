@@ -40,6 +40,9 @@ class ViscapCrazyflie:
         """
 
         crtp.init_drivers()
+        self.cleaned = False
+        motion = None
+
 
         if single_crazyflie:
             self.crazyflie = Crazyflie(rw_cache = f"{ViscapCrazyflie.PATH}/.cache")
@@ -52,7 +55,8 @@ class ViscapCrazyflie:
 
             self.sync_crazyflie.open_link()
 
-            return self.motion
+            motion = self.motion
+
 
         for tool in tools:
             action = self.tools.get(tool, None)
@@ -63,8 +67,7 @@ class ViscapCrazyflie:
 
             else: raise ValueError("Invalid tool name")
 
-        self.cleaned = False
-
+        return motion
 
     def init_crazyflie_swarm(self, uris: set[str], func: callable) -> None:
 
@@ -96,13 +99,15 @@ class ViscapCrazyflie:
 
         return self.multiranger
 
-    def multiranger_navigate(self) -> None:
+    def multiranger_navigate(self,
+                             distance_range: float) -> None:
 
         """
         Monitore the 5 sensors in the multiranger deck and avoid colision. You must initialize 
         Multiranger with create_multiranger function
+        :param distance_range (float): the distance_range in meters
         """
-
+        self.distance_range = distance_range
         self.node.get_logger().info("Multiranger monitor timer initialized")
         self.multiranger_timer = self.node.create_timer(0.1, self.__multiranger_monitor)
         self.__vel = 0.5
@@ -118,14 +123,15 @@ class ViscapCrazyflie:
         if self.__is_close(self.multiranger.up)   : 
             self.motion.land()
             self.node.destroy_timer(self.multiranger_timer)
+            self.node.get_logger().info("Drone landed. Application finished")
             return
 
-        self.node.get_logger().info(f"Movendo com vel x: {velocity_x} e vel y: {velocity_y}")
+        self.node.get_logger().info(f"Moving with vel x: {velocity_x} e vel y: {velocity_y}")
         self.motion.start_linear_motion(velocity_x, velocity_y, 0)
 
     def __is_close(self, range: float) -> bool:
         if range is None: return False
-        else: return range < 0.2
+        else: return range < self.distance_range
 
     def cleanup(self) -> None:
 
