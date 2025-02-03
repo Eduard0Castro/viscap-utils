@@ -10,7 +10,9 @@ class MultirangerTest(Node):
         super().__init__("test_multiranger_node")
 
         self.crazyflie = ViscapCrazyflie(self)
-        self.crazyflie.init_crazyflie()
+        self.motion = self.crazyflie.init_crazyflie()
+
+        self.motion.take_off()
 
         self.get_logger().info("Test Multiranger Node has been initialized")
 
