@@ -5,7 +5,7 @@ path = f"{Path(__file__).resolve().parent}"
 cap = cv2.VideoCapture("http://192.168.138.124:81/stream")
 
 fcode = cv2.VideoWriter.fourcc(*"mp4v")
-video_file_name = "/videos/filmagem.mp4"
+video_file_name = "videos/filmagem.mp4"
 videoDimension = (480,320)
 frame_rate = 20.0
 

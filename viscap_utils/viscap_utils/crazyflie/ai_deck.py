@@ -9,7 +9,8 @@ class AIDeck():
     """
     Class to use the AI-deck with a Wi-Fi network and connection with sockets. 
     It works independently of cflib and has methods to get and proccess the image from
-    the camera.
+    the camera. It's based on the https://github.com/bitcraze/aideck-gap8-examples/ 
+    repository by Bitcraze. 
     
     """
     
