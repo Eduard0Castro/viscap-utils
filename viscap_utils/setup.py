@@ -21,6 +21,8 @@ setup(
     entry_points={
         'console_scripts': [
             "multiranger_test = viscap_utils.examples.multiranger_test:main",
+            "swarm_test = viscap_utils.examples.swarm_test:main",
+            "ai_deck = viscap_utils.examples.ai_deck_example:main",
         ],
     },
 )

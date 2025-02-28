@@ -1,10 +1,13 @@
 import rclpy
 from rclpy.node import Node
+from pathlib import Path
 from viscap_utils.crazyflie.viscap_crazyflie import ViscapCrazyflie
 import cv2
 
 
 class AIDeckExample(Node):
+
+    PATH = Path(__file__).resolve().parent
 
     def __init__(self) -> None:
 
@@ -14,9 +17,9 @@ class AIDeckExample(Node):
         self.crazyflie.processing_ai_deck_image(self.stream_cam)
         
         fcode = cv2.VideoWriter.fourcc(*"mp4v")
-        video_file_name = "filmagem.mp4"
+        video_file_name = f"{AIDeckExample.PATH}/filmagem.mp4"
         videoDimension = (324,244)
-        frame_rate = 20.0
+        frame_rate = 15.0
         self.recordVideo = cv2.VideoWriter(video_file_name, fcode, frame_rate, videoDimension)
 
 
@@ -25,8 +28,6 @@ class AIDeckExample(Node):
         
         frame = img
         cv2.imshow("Teste", frame)
-
-        print(img.shape)
 
         self.recordVideo.write(frame)
 
